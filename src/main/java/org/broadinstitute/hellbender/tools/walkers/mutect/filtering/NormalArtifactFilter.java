@@ -26,6 +26,9 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
 
     @Override
     public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+
+        
+        
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
@@ -41,6 +44,9 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
         final double tumorAlleleFraction = (double) tumorAltDepth / tumorDepth;
         final double normalAlleleFraction = normalDepth == 0 ? 0 : (double) normalAltDepth / normalDepth;
 
+                
+
+        
         if (normalAlleleFraction < MIN_NORMAL_ARTIFACT_RATIO * tumorAlleleFraction)  {
             return 0.0;
         }
@@ -55,7 +61,28 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
         final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(medianRefBaseQuality))
                 .cumulativeProbability(normalAltDepth - 1);
 
-        return normalPValue < normalPileupPValueThreshold ? 1.0 : normalArtifactProbability;
+        double retval = normalPValue < normalPileupPValueThreshold ? 1.0 : normalArtifactProbability;
+
+        System.out.println("NormalArtifact: calculateErrorProbability: " + vc);
+        System.out.println("tumorLods=" + Arrays.toString(tumorLods) + "\n" +
+                           "indexOfMaxTumorLod=" + indexOfMaxTumorLod + "\n" +
+                           "tumorAlleleDepths=" + Arrays.toString(tumorAlleleDepths) + "\n" +
+                           "tumorDepth=" + tumorDepth + "\n" +
+                           "tumorAltDepth=" + tumorAltDepth + "\n" +
+                           "normalAllelDepths=" + Arrays.toString(normalAlleleDepths) + "\n" +
+                           "normalDepth=" + normalDepth + "\n" +
+                           "normalAltDepth=" + normalAltDepth + "\n" +
+                           "tumorAlleleFraction=" + tumorAlleleFraction + "\n" +
+                           "normalAlleleFraction=" + normalAlleleFraction + "\n" +
+                           "medianRefBaseQuality=" + medianRefBaseQuality + "\n" +
+                           "normalArtifactNegativeLogOdds=" + Arrays.toString(normalArtifactNegativeLogOdds) + "\n" +
+                           "normalArtifactProbability=" + normalArtifactProbability + "\n" +
+                           "normalPValue=" + normalPValue );
+        
+        System.out.println("NormalArtifactResult: " + Double.toString(retval));
+        System.out.println();
+        
+        return retval;
     }
 
     @Override

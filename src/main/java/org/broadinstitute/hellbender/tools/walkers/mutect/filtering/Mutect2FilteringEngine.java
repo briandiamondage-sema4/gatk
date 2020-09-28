@@ -165,6 +165,11 @@ public class Mutect2FilteringEngine {
      * Create a filtered variant and record statistics for the final pass of {@link FilterMutectCalls}
      */
     public VariantContext applyFiltersAndAccumulateOutputStats(final VariantContext vc, final ReferenceContext referenceContext) {
+
+        System.out.println("vc_in: " + vc);
+
+        System.out.println("list of filters: " + filters);
+        
         final VariantContextBuilder vcb = new VariantContextBuilder(vc).filters(new HashSet<>());
 
         final ErrorProbabilities errorProbabilities = new ErrorProbabilities(filters, vc, this, referenceContext);
@@ -174,6 +179,8 @@ public class Mutect2FilteringEngine {
         // and probabilities close to 0 must not be filtered
         double errorThreshold = Math.min(1 - EPSILON, Math.max(EPSILON, getThreshold()));
 
+        System.out.println("error threshold: " + Double.toString(errorThreshold));
+        
         Map<String, Double> siteFiltersWithErrorProb = new LinkedHashMap<>();
 
         // apply allele specific filters
@@ -182,18 +189,37 @@ public class Mutect2FilteringEngine {
                         .filter(entry -> !entry.getValue().isEmpty())
                         .map(entry -> addFilterStrings(entry.getValue(), errorThreshold, entry.getKey().filterName())).collect(Collectors.toList());
 
+        System.out.println("alleleStatusByFilter: " +      alleleStatusByFilter);
+        
         // for each allele, merge all allele specific filters
         List<List<String>> filtersByAllele = ErrorProbabilities.transpose(alleleStatusByFilter);
+
+
+        System.out.println("filtersByAllele: " + filtersByAllele);
+
         List<List<String>> distinctFiltersByAllele = filtersByAllele.stream().map(this::getDistinctFiltersForAllele).collect(Collectors.toList());
+        System.out.println("distinctFiltersByAllele: " + distinctFiltersByAllele);
+
         ListIterator<String> mergedFilterStringByAllele = distinctFiltersByAllele.stream().map(AnnotationUtils::encodeStringList).collect(Collectors.toList()).listIterator();
 
+        //System.out.println("mergedFilterStringByAllele: " + mergedFilterStringByAllele);
+
+
+        
         List<String> orderedASFilterStrings = vc.getAlternateAlleles().stream().map(allele -> allele.isSymbolic() ?
                 GATKVCFConstants.SITE_LEVEL_FILTERS : mergedFilterStringByAllele.next()).collect(Collectors.toList());
+
+        System.out.println("orderedASFilterStrings: " + orderedASFilterStrings);
+
         String finalAttrString = AnnotationUtils.encodeAnyASListWithRawDelim(orderedASFilterStrings);
 
+        System.out.println("finalAttrString : " + finalAttrString);
+        
         vcb.putAttributes(Collections.singletonMap(GATKVCFConstants.AS_FILTER_STATUS_KEY, finalAttrString));
 
 
+
+        
         // compute site-only filters
         // from allele specific filters
          alleleStatusByFilter.stream().forEachOrdered(alleleStatusForFilter -> {
@@ -217,6 +243,17 @@ public class Mutect2FilteringEngine {
 
                 });
 
+        System.out.println("Variant filters:");
+
+        errorProbabilities.getProbabilitiesForVariantFilters().entrySet().forEach(entry ->{
+                double value = entry.getValue();
+                String filtername = entry.getKey().filterName();
+                System.out.println("\t" + Double.toString(value) + " : " + filtername);
+            });
+        
+        
+
+        
         // if all alleles have been filtered out, but for different reasons, fail the site.
         // if the site is only ref and symbolic, no filters will be applied so don't fail
         if (siteFiltersWithErrorProb.isEmpty() && !distinctFiltersByAllele.stream().allMatch(List::isEmpty)) {
@@ -228,6 +265,7 @@ public class Mutect2FilteringEngine {
             }
         }
 
+        
         // this code limits the number of filters specified for any variant to the highest probability filters
         // this will not change the status of whether a variant is actually filtered or not
         final double maxErrorProb = siteFiltersWithErrorProb.values().stream().mapToDouble(p->p).max().orElse(1);
@@ -237,7 +275,25 @@ public class Mutect2FilteringEngine {
             }
         });
 
-        return vcb.make();
+        System.out.println("siteFiltersWithErrorProb: " +   siteFiltersWithErrorProb); 
+        
+        VariantContext new_vc = vcb.make();
+        //return vcb.make();
+        
+
+        System.out.println("vc_out: " + new_vc);
+
+        
+
+
+
+
+
+        
+        System.out.println(); // spacer
+        
+        return new_vc;
+        
     }
 
     /**
@@ -265,8 +321,13 @@ public class Mutect2FilteringEngine {
      * @return List of filtername or "SITE" for each allele
      */
     private List<String> addFilterStrings(final List<Double> probabilities, final double errorThreshold, final String filterName) {
+
+        for (Double p : probabilities) {
+            System.out.println("\tfilter: " + filterName + " with p = " + Double.toString(p));
+        }
+        
         return probabilities.stream().map(value -> value > errorThreshold ?
-                        filterName : GATKVCFConstants.SITE_LEVEL_FILTERS).collect(Collectors.toList());
+                                          filterName : GATKVCFConstants.SITE_LEVEL_FILTERS).collect(Collectors.toList());
     }
 
     public static double roundFinitePrecisionErrors(final double probability) {
