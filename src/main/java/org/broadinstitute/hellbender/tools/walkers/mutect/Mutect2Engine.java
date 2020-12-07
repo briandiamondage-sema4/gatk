@@ -375,9 +375,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals);
 
+        System.out.println("tumorLogOdds for refInterval: " + refInterval + " = " + tumorLogOdds);
+        
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
+            //System.out.println("\ttumorLogOdds insufficient");
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
+            System.out.println("\thasNormal and not genotyping all germline sites");
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final int normalAltCount = normalAltQuals.size();
@@ -386,11 +390,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 return new ActivityProfileState(refInterval, 0.0);
             }
         } else if (!MTAC.genotypeGermlineSites) {
+            System.out.println("\tnot genotyping all germline sites by default");
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
             if (!germline.isEmpty()){
+                System.out.println("\t\t-germline not empty for this interval.");
                 final VariantContext germlineVariant = germline.get(0);
                 final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVariant, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
+                System.out.println("\t\t-germlineAlleleFreqs: " + germlineAlleleFrequencies);
                 if (!germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
+                    System.out.println("\t\tgermline freq exceeds max allowed: " + MTAC.maxPopulationAlleleFrequency);
                     return new ActivityProfileState(refInterval, 0.0);
                 }
             }
@@ -404,6 +412,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         if (pileup.size() < minCallableDepth) {
             callableSites.increment();
         }
+        System.out.println("\tsite pursued as active.");
         return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
     }
 
