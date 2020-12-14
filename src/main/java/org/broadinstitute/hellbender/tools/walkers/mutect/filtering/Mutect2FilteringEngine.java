@@ -90,8 +90,15 @@ public class Mutect2FilteringEngine {
         final double[] unweightedPosteriorOfRealAndError = new double[] {logOddsOfRealVersusError + logPriorOfReal,
                 NaturalLogUtils.log1mexp(logPriorOfReal)};
 
+        System.out.println("posteriorProbabilityOfError:  logOddsRealVersusError: " + logOddsOfRealVersusError +
+                           ", logPriorOfReal: " + logPriorOfReal);
+        
+        System.out.println("unweightedPosteriorOfRealAndError: " + unweightedPosteriorOfRealAndError[0] + ", " + unweightedPosteriorOfRealAndError[1]);
+
         final double[] posteriorOfRealAndError = NaturalLogUtils.normalizeFromLogToLinearSpace(unweightedPosteriorOfRealAndError);
 
+        System.out.println("posteriorOfRealAndError: " + posteriorOfRealAndError[0] + ", " + posteriorOfRealAndError[1]);
+        
         return posteriorOfRealAndError[1];
     }
 
@@ -176,6 +183,8 @@ public class Mutect2FilteringEngine {
 
         Map<String, Double> siteFiltersWithErrorProb = new LinkedHashMap<>();
 
+        System.out.println("vc: " + vc);
+        
         // apply allele specific filters
         List<List<String>> alleleStatusByFilter =
                 errorProbabilities.getProbabilitiesForAlleleFilters().entrySet().stream()
@@ -265,6 +274,11 @@ public class Mutect2FilteringEngine {
      * @return List of filtername or "SITE" for each allele
      */
     private List<String> addFilterStrings(final List<Double> probabilities, final double errorThreshold, final String filterName) {
+
+        System.out.println("filterName: " + filterName + ", threshold: " + errorThreshold);
+        System.out.println("probabilities: " + probabilities);
+        System.out.println();
+
         return probabilities.stream().map(value -> value > errorThreshold ?
                         filterName : GATKVCFConstants.SITE_LEVEL_FILTERS).collect(Collectors.toList());
     }

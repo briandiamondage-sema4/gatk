@@ -37,6 +37,8 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
         final List<List<ImmutablePair<Integer, Double>>> depthsAndPosteriorsPerAllele = new ArrayList<>();
         new IndexRange(0, vc.getNAlleles()-1).forEach(i -> depthsAndPosteriorsPerAllele.add(new ArrayList<>()));
 
+        System.out.println("\n\n# calculateErrorProbabilityForAlleles: " + vc);
+        
         for (final Genotype tumorGenotype : vc.getGenotypes()) {
             if (filteringEngine.isNormal(tumorGenotype)) {
                 continue;
@@ -61,11 +63,32 @@ public class ContaminationFilter extends Mutect2AlleleFilter {
             final double[] logOddsOfRealVsContaminationPerAllele = new double[alleleFrequencies.length];
             final double[] posteriorProbOfContaminationPerAllele = new double[alleleFrequencies.length];
             new IndexRange(0,alleleFrequencies.length).forEach(i -> {
+
                 singleContaminantLikelihoodPerAllele[i] = 2 * alleleFrequencies[i] * (1 - alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination /2)
                         + MathUtils.square(alleleFrequencies[i]) * MathUtils.binomialProbability(totalAD,  altADs[i], contamination);
+
                 manyContaminantLikelihoodPerAllele[i] = MathUtils.binomialProbability(totalAD, altADs[i], contamination * alleleFrequencies[i]);
+
                 logContaminantLikelihoodPerAllele[i] = Math.log(Math.max(singleContaminantLikelihoodPerAllele[i], manyContaminantLikelihoodPerAllele[i]));
+
                 logOddsOfRealVsContaminationPerAllele[i] = logSomaticLikelihoodPerAllele[i] - logContaminantLikelihoodPerAllele[i];
+
+                double posteriorPerAllele = filteringEngine.posteriorProbabilityOfError(vc, logOddsOfRealVsContaminationPerAllele[i], i);
+
+                System.out.println("genotype: " + tumorGenotype);
+                System.out.println("totalAD: " + totalAD);
+                System.out.println("altAD: " + altADs[i]);
+                System.out.println("contamination: " + contamination);
+                
+                System.out.println("alleleFreq: " + alleleFrequencies[i]);
+                System.out.println("singleContaminantLikelihoodPerAllele: " + singleContaminantLikelihoodPerAllele[i]);
+                System.out.println("manyContaminantLikelihoodPerAllele: " + manyContaminantLikelihoodPerAllele[i]);
+                System.out.println("logContaminantLikelihoodPerAllele: " + logContaminantLikelihoodPerAllele[i]);
+                System.out.println("logSomaticLikelihoodPerAllele: " + logSomaticLikelihoodPerAllele[i]);
+                System.out.println("logOddsOfRealVsContaminationPerAllele: " + logOddsOfRealVsContaminationPerAllele[i]);
+                System.out.println("posteriorPerAllele: " + posteriorPerAllele);
+                System.out.println();
+                
             });
 
             new IndexRange(0,alleleFrequencies.length).forEach(i -> {
